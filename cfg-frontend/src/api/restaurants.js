@@ -6,6 +6,11 @@ export const restaurantsApi = {
     return res.data.data;
   },
 
+  get: async (id) => {
+    const res = await client.get(`/restaurants/${id}`);
+    return res.data.data;
+  },
+
   create: async (data) => {
     const res = await client.post('/restaurants', data);
     return res.data.data;

@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../store/auth.js';
 import { authApi } from '../api/auth.js';
+import { restaurantsApi } from '../api/restaurants.js';
 
 const NAV_ICONS = {
+  dashboard: (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    </svg>
+  ),
   restaurants: (
     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -54,7 +60,7 @@ function NavItem({ to, icon, label }) {
   );
 }
 
-function SidebarContent({ restaurantId, user, onClose }) {
+function SidebarContent({ restaurantId, restaurantName, user, onClose }) {
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const isKitchen = user?.role === 'KITCHEN';
   const rid = restaurantId || user?.restaurantId;
@@ -76,6 +82,19 @@ function SidebarContent({ restaurantId, user, onClose }) {
           <p className="px-3 mb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
             Restaurant
           </p>
+          {restaurantName && (
+            <div className="mx-3 mb-2 px-3 py-2 rounded-md bg-primary-50 border border-primary-100">
+              <p className="text-xs font-semibold text-primary-700 truncate">{restaurantName}</p>
+            </div>
+          )}
+
+          {(isSuperAdmin || ['OWNER', 'MANAGER'].includes(user?.role)) && (
+            <NavItem
+              to={`/restaurants/${rid}/dashboard`}
+              icon={NAV_ICONS.dashboard}
+              label="Tableau de bord"
+            />
+          )}
 
           {!isKitchen && (
             <NavItem
@@ -130,8 +149,15 @@ export default function Layout() {
   const { user, clearAuth } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [restaurantName, setRestaurantName] = useState('');
 
   const restaurantId = params.restaurantId;
+
+  useEffect(() => {
+    const rid = restaurantId || user?.restaurantId;
+    if (!rid) { setRestaurantName(''); return; }
+    restaurantsApi.get(rid).then((r) => setRestaurantName(r.name)).catch(() => setRestaurantName(''));
+  }, [restaurantId, user?.restaurantId]);
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -189,6 +215,7 @@ export default function Layout() {
 
         <SidebarContent
           restaurantId={restaurantId}
+          restaurantName={restaurantName}
           user={user}
           onClose={() => setSidebarOpen(false)}
         />

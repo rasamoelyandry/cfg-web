@@ -49,6 +49,12 @@ client.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    if (error.response?.status === 401 && originalRequest._retry) {
+      // Refresh succeeded but the retried request still got 401 — force logout.
+      clearAuthAndRedirect();
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -114,7 +120,11 @@ client.interceptors.response.use(
   }
 );
 
+let redirectingToLogin = false;
+
 function clearAuthAndRedirect() {
+  if (redirectingToLogin) return;
+  redirectingToLogin = true;
   localStorage.removeItem('auth-storage');
   window.location.href = '/login';
 }
